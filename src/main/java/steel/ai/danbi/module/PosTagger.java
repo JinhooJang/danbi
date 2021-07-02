@@ -57,7 +57,9 @@ public class PosTagger {
 		if(CONFIG.isDebug()) System.out.println("document->" + document);
 		
 		// 구분자 특수문자는 공백으로 변경
-		document = document.replaceAll("[\\|\\[\\]\\(\\)\\<\\>\\\"/-_·:~↗↘,🙂?]", " ");
+		//document = document.replaceAll("[\\|\\[\\]\\(\\)\\<\\>\\\"-_·:~,㈜🙂?]", " ");
+		document = document.replaceAll("[\\|\\[\\]\\(\\)\\<\\>_\\-/㈜,·:~]", " ");
+		if(CONFIG.isDebug()) System.out.println("document->" + document);
 		
 		// 개행값은 개행 문자로 변경
 		document = document.trim()
@@ -96,6 +98,7 @@ public class PosTagger {
 			//morphemeMap.addAll(sentenceAnalyze(sentenceMorphMap));
 		}
 		
+		//System.out.println(document + "->" + posList);		
 		return posList;
 	}
 	
@@ -131,6 +134,7 @@ public class PosTagger {
 		String lastTag = "";
 		
 		int loop = 0;
+		//System.out.println(morphemeMap);
 		for(String token : morphemeMap.keySet()) {
 			loop++;
 			Set<String> tagSet = morphemeMap.get(token);
@@ -152,6 +156,8 @@ public class PosTagger {
 			}
 		}
 		
+		//System.out.println(tempMap);
+		
 		// 복합명사
 		String beforeToken = "";
 		String beforeTag = "";
@@ -168,10 +174,14 @@ public class PosTagger {
 						
 						continue;
 					}
+				} else if(beforeTag.equals("NN") || beforeTag.equals("CN")) {
+					reArrangeMap.put(beforeToken, beforeTag);
 				}
 				
+				if(tempMap.get(token).contains("CN")) beforeTag = "CN";
+				else beforeTag = "NN"; 
 				beforeToken = token;
-				beforeTag = "NN";
+				
 			} else {
 				if(beforeTag.equals("NN") || beforeTag.equals("CN")) reArrangeMap.put(beforeToken, beforeTag);
 				reArrangeMap.put(token, tempMap.get(token));
@@ -193,15 +203,16 @@ public class PosTagger {
 	 * @return
 	 */
 	public String firstTag(Set<String> tagSet) {
+		// 우선 순위별
+		if(tagSet.contains("CN")) return "CN";
+		if(tagSet.contains("NN")) return "NN";
+		if(tagSet.contains("MA")) return "MA";
+		if(tagSet.contains("MM")) return "MM";
+		
+		
 		for(String tag : tagSet) {
-			if(tag.equalsIgnoreCase("EM")) continue;
-			if(tag.equalsIgnoreCase("JS")) continue;
-			
-			// 우선 순위별
-			if(tag.equalsIgnoreCase("CN")) return "CN";
-			if(tag.equalsIgnoreCase("NN")) return "NN";
-			if(tag.equalsIgnoreCase("MA")) return "MA";
-			if(tag.equalsIgnoreCase("MM")) return "MM";
+			if(tagSet.contains("EM")) continue;
+			if(tagSet.contains("JS")) continue;
 			
 			return tag.toUpperCase();			
 		}
@@ -283,6 +294,20 @@ public class PosTagger {
 				}
 				prevPos = posSet;
 				lastToken = token;
+				
+				// 나머지 단어 조합으로 체크
+				/*if(chkOtherToken(word.substring(0, last - token.length())) != null) {
+					Map<String, Object> tempMap = new HashMap<> ();
+					tempMap.put("token", token);
+					tempMap.put("posSet", posSet);
+					tempPosList.add(tempMap);					
+					
+					tempMap = new HashMap<> ();
+					tempMap.put(word.substring(0, last - token.length()), 
+							chkOtherToken(word.substring(0, last - token.length())));
+					tempPosList.add(tempMap);
+					break;
+				}*/
 			}
 			
 			// 마지막 태그를 토큰과 세팅
@@ -305,8 +330,18 @@ public class PosTagger {
 				Map<String, Object> tempMap = new HashMap<> ();
 				if(CONFIG.isRepresentative()) tempMap.put("token", changeTerm(token));
 				else tempMap.put("token", token);
-				tempMap.put("posSet", new HashSet<String>(Arrays.asList("UK")));
+				
+				// 명사 추청 태그 NF
+				if(prevPos.contains("JS") || prevPos.size() == 0) {
+					tempMap.put("posSet", new HashSet<String>(Arrays.asList("NF")));
+				}
+				// 그외 UK
+				else {
+					tempMap.put("posSet", new HashSet<String>(Arrays.asList("UK")));					
+				}				
+				
 				tempPosList.add(tempMap);
+
 				
 				//morphemeMap.put(token, new HashSet<String>(Arrays.asList("UK")));
 				//System.out.println("WARNING[" + _word + "->" + posMap + "]");
@@ -359,7 +394,14 @@ public class PosTagger {
 				
 				// 마지막이 아닐경우
 				prevPos = posSet;
-				lastToken = token;				
+				lastToken = token;
+				
+				/*// 나머지 단어 조합으로 체크
+				if(chkOtherToken(word.substring(first + token.length(), word.length())) != null) {
+					morphemeMap.put(word.substring(first + token.length(), word.length()), 
+							chkOtherToken(word.substring(first + token.length(), word.length())));
+					break;
+				}*/
 			}
 			
 			// 마지막 태그를 토큰과 세팅
@@ -446,4 +488,15 @@ public class PosTagger {
 		
 		return term;
 	}	
+	
+	
+	/**
+	 * 나머지 토큰으로 체크
+	 * @return
+	 */
+	public Set<String> chkOtherToken(String otherToken) {
+		String chgToken = changeTerm(otherToken);
+		if(tagDictionary.containsKey(chgToken)) return tagDictionary.get(chgToken);
+		return null;
+	}
 }

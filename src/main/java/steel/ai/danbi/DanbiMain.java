@@ -10,6 +10,7 @@ import java.util.Map;
 
 import steel.ai.danbi.vo.DanbiConfigVO;
 
+
 /**
  * 단비 형태소 분석기
  * 
@@ -22,30 +23,44 @@ public class DanbiMain {
 		DanbiConfigVO vo = new DanbiConfigVO ();
 		
 		// 사전이 위치한 경로
-		vo.setDicPath("C:/Project/steel/database/dictionary/");
+		vo.setDicPath("D:/Project/database/dictionary/");
 		// 사용할 NER 리스트 
-		vo.setNerList("SCH,JOB,SKLC,SKLS,MAJ,TSK,NAT,LOC,LIC,MTR,SYN".split(","));
+		vo.setNerList("SCH,JOB,SKLC,SKLS,MAJ,TSK,NAT,LOC,LIC,MTR,CMP,SYN".split(","));
 		// 사용자 사전을 사용할 것인지
 		vo.setUserYn(true);
 		// debug 모드 사용 여부
 		vo.setDebug(false);
 		vo.setRepresentative(false);
-		vo.setCoumpoundLevel(0);
+		vo.setCoumpoundLevel(1);
 		// compound level 0(무리해서 추출 안함), 1(복합명사가 있을 경우 명사 연결 치환), 2(복합명사와 명사 둘다 뽑는다)
 		
-		String text = "이를 어설프게 검토한다면 사양 변경 승인이 어려울 것으로 판단했습니다";
+		String text = "온라인패션몰 가능자 가불有無해";
 		
 		try {
 			Danbi danbi = new Danbi(vo);
 			// jarvis 데이터 가져오기
-			//List<String> sentences = getTestData();
-			//List<Map<String, String>> tagAll = new ArrayList<> ();
-			//for(String sentence : sentences) {
-			//	tagAll.addAll(danbi.pos(sentence));				
-			//}
-			System.out.println(danbi.pos(text));
+			List<String> sentences = getTestData();
+			System.out.println("sentences->" + sentences.size());
+			Thread.sleep(5000);
+			List<Map<String, String>> tagAll = new ArrayList<> ();
+			int loop = 0;
+			long startTime = System.currentTimeMillis();
+			for(String sentence : sentences) {
+				List<Map<String, String>> tempList = danbi.pos(sentence);
+				System.out.println(sentence);
+				System.out.println(tempList);
+				tagAll.addAll(tempList);
+				
+				//danbi.pos(sentence);
+				if(++loop % 10000 == 0) System.out.println("execute sentence => " + loop);		
+				Thread.sleep(5000);
+			}
+			long endTime = System.currentTimeMillis();
 			//System.out.println(tagAll);
-			//findUkCount(tagAll, 5);
+			findUkCount(tagAll, 5);
+			//System.out.println(danbi.pos(text));
+			System.out.println(endTime - startTime);
+						
 			//System.out.println(danbi.pos(text));
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -74,7 +89,7 @@ public class DanbiMain {
 		
 		for(String key : ukCountMap.keySet()) {
 			if(ukCountMap.get(key) >= showCount) {
-				System.out.println(key + "->" + ukCountMap.get(key));
+				System.out.println(key + "," + ukCountMap.get(key));
 			}
 		}
 	}
@@ -82,22 +97,27 @@ public class DanbiMain {
 	
 	public List<String> getTestData() {
 		List<String> sentences = new ArrayList<> ();
+		String line = "";
 		// read file
 		try {
 			BufferedReader inFiles
 				//= new BufferedReader(new InputStreamReader(new FileInputStream("c:/project/steel/database/raw-data/saibog/jarvis.txt"), "UTF8"));
-			= new BufferedReader(new InputStreamReader(new FileInputStream("c:/project/steel/ytn_news.txt"), "UTF8"));
+			= new BufferedReader(new InputStreamReader(new FileInputStream("D:/project/database/recruits_title.csv"), "UTF8"));
 			
-			String line = "";
+			int count = 0;
 			while((line = inFiles.readLine()) != null) {
-				if(line.trim().length() > 0) {
-					sentences.add(line.trim());
+				if(line.trim().length() > 0 && count++ > 0) {
+					String[] temp = line.split(",");
+					if(temp != null && temp.length == 2) {
+						sentences.add(temp[1]);
+					}
 				}
 			}
 			
 			inFiles.close();
 		} catch (Exception e) {
 			e.printStackTrace();
+			System.out.println(line);
 		}
 		
 		return sentences;

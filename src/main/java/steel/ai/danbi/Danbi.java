@@ -312,7 +312,7 @@ public class Danbi {
 			for(String k : posMap.keySet()) {
 				String tag = posMap.get(k);
 				
-				// 이전값과 현재값이 모두 명사일 때
+				/*// 이전값과 현재값이 모두 명사일 때
 				if(prevTag.equals("NN") && tag.equals("NN")) {
 					Map<String, String> newMap = new LinkedHashMap<> ();
 					
@@ -330,11 +330,22 @@ public class Danbi {
 						Set<String> nerSet = nerDictionary.get(prevKwd + k);
 						
 					}
+				}*/
+				// tag에서 NER을 가져온다
+				String chgNerKwd = chgNerKwd(k);
+				if(nerDictionary.containsKey(chgNerKwd)) {
+					Set<String> nerSet = nerDictionary.get(chgNerKwd);
+					for(String ner : nerSet) {
+						tag += ",NER-" + ner;
+					}
 				}
+				posMap.put(k, tag);
 			}
 			
 			rtnList.add(posMap);
 		}
+		
+		//System.out.println(rtnList);
 		
 		return rtnList;
 	}
