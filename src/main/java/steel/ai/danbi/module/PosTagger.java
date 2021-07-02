@@ -57,7 +57,7 @@ public class PosTagger {
 		if(CONFIG.isDebug()) System.out.println("document->" + document);
 		
 		// 구분자 특수문자는 공백으로 변경
-		document = document.replaceAll("[\\|/·~↗↘,🙂?]", " ");
+		document = document.replaceAll("[\\|\\[\\]\\(\\)\\<\\>\\\"/-_·:~↗↘,🙂?]", " ");
 		
 		// 개행값은 개행 문자로 변경
 		document = document.trim()
@@ -156,7 +156,7 @@ public class PosTagger {
 		String beforeToken = "";
 		String beforeTag = "";
 		for(String token : tempMap.keySet()) {
-			System.out.println(token + " " + tempMap.get(token));
+			//System.out.println(token + " " + tempMap.get(token));
 			if(tempMap.get(token).equals("NN") || tempMap.get(token).equals("CN")) {
 				// 이전 명사와 현재 명사를 합쳤을 때 품사가 있을 경우
 				if(beforeToken.length() > 0 && tagDictionary.containsKey(beforeToken + token)) {
@@ -414,6 +414,20 @@ public class PosTagger {
 		if(Pattern.matches("^[a-zA-Z]*$", token)){
 			posSet.add("SL");
 		}
+		// 한자로만 되어 있을 때
+		boolean isHanja = true;
+		for(int i = 0; i < token.length(); i++) {
+			int charAt = (int)token.charAt(i);
+			
+			if((charAt >= '\u2E80' && charAt <= '\u2EFF') || 
+				(charAt >= '\u3400' && charAt <= '\u4DB5') ||
+				(charAt >= '\u4E00' && charAt <= '\u9FBF')) {				
+			} else {
+				isHanja = false;
+				break;
+			}
+		}
+		if(isHanja) posSet.add("SH");
 		
 		//System.out.println(token + "->" + posSet);
 		return posSet;
