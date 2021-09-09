@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import steel.ai.danbi.vo.DanbiConfigVO;
+import steel.ai.danbi.vo.MorphemeVO;
 
 
 /**
@@ -33,10 +34,25 @@ public class DanbiMain {
 		vo.setRepresentative(false);
 		vo.setCoumpoundLevel(1);
 		// compound level 0(무리해서 추출 안함), 1(복합명사가 있을 경우 명사 연결 치환), 2(복합명사와 명사 둘다 뽑는다)
-		
-		String text = "온라인패션몰 가능자 가불有無해";
+		String text = "우아하게 보여요";
+		Map<String, String> testMap = new HashMap<> ();
 		
 		try {
+			Danbi danbi = new Danbi(vo);
+			List<MorphemeVO> danbiResult = danbi.pos(text);
+			
+			for(MorphemeVO morphVO : danbiResult) {
+				for(int i = 0; i < morphVO.getWordList().size(); i++) {
+					System.out.println(morphVO.getWordList().get(i) + "->" + morphVO.getPosTagList().get(i));
+				}
+			}
+			//System.out.println(danbi.pos(text));
+		} catch (Exception e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		}		
+		
+		/*try {
 			Danbi danbi = new Danbi(vo);
 			// jarvis 데이터 가져오기
 			List<String> sentences = getTestData();
@@ -64,12 +80,12 @@ public class DanbiMain {
 			//System.out.println(danbi.pos(text));
 		} catch (Exception e) {
 			e.printStackTrace();
-		}
+		}*/
 	}
 	
 	public static void main( String[] args ) {
         DanbiMain danbi = new DanbiMain();
-        danbi.test();
+        danbi.test();        
     }
 	
 	

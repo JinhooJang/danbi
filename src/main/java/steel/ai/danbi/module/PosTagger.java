@@ -13,6 +13,7 @@ import java.util.regex.Pattern;
 import org.apache.commons.lang3.StringUtils;
 
 import steel.ai.danbi.vo.DanbiConfigVO;
+import steel.ai.danbi.vo.MorphemeVO;
 
 
 /**
@@ -50,56 +51,84 @@ public class PosTagger {
 		this.snDictionary = snDictionary;
 	}
 	
-	public List<Map<String, String>> posTagging(String document) {
-		List<Map<String, String>> posList = new ArrayList<> ();
-		if(document == null || document.trim().length() == 0) return posList;
+	
+	/**
+	 * 형태소 태깅
+	 * @param document
+	 * @return
+	 */
+	public List<MorphemeVO> posTagging(String document) {
+		List<MorphemeVO> posResult = new ArrayList<> ();
+		if(document == null || document.trim().length() == 0) return posResult;
 		
 		if(CONFIG.isDebug()) System.out.println("document->" + document);
 		
 		// 구분자 특수문자는 공백으로 변경
 		//document = document.replaceAll("[\\|\\[\\]\\(\\)\\<\\>\\\"-_·:~,㈜🙂?]", " ");
-		document = document.replaceAll("[\\|\\[\\]\\(\\)\\<\\>_\\-/㈜,·:~]", " ");
+		//document = document.replaceAll("[\\|\\[\\]\\(\\)\\<\\>_\\-/㈜,·:~]", " ");
+		document = document.replaceAll("[\\|\\[\\]\\(\\)\\<\\>_\\㈜,·:~]", " ");
 		if(CONFIG.isDebug()) System.out.println("document->" + document);
 		
 		// 개행값은 개행 문자로 변경
 		document = document.trim()
-				.replaceAll("\n", ".")
-				.replaceAll("\r", ".");
+				.replaceAll("\n", ". ")
+				.replaceAll("\r", ". ")
+				.replaceAll("요\\.", "요. ")
+				.replaceAll("다\\.", "다. ");
 		
-		String[] sentences = document.toLowerCase().split("\\.");
+		if(CONFIG.isDebug()) System.out.println("document->" + document);
+		
+		String[] sentences = document.toLowerCase().split("\\. ");
 		
 		// 문장별로 형태소 분석 수행
 		for(String sentence : sentences) {
-			if(CONFIG.isDebug()) System.out.println("sentence->" + sentence);			
+			if(CONFIG.isDebug()) System.out.println("sentence->" + sentence);
 			if(sentence.length() == 0) continue;
 			
-			// 문장을 다시, 단어로 자른다
+			MorphemeVO vo = new MorphemeVO();
+			List<String> wordList = new ArrayList<> ();
+			List<List<Map<String, String>>> allPosTagList = new ArrayList<> ();
+			
+			// 문장을 다시, 단어로 자른다			
 			String[] word = sentence.trim().split(" ");
 			for(int j = 0; j < word.length; j++) {
+				
+				List<Map<String, String>> posTagList = new ArrayList<> (); 
+				
 				if(word[j].trim().length() > 0) {
+					wordList.add(word[j].trim());
+					
 					Map<String,  Set<String>> backAnalyzed = backWardAnalyze(word[j]);
+					
 					if(chkUK(backAnalyzed)) {
 						Map<String,  Set<String>> forwardAnalyzed = forwardAnalyze(word[j]);
 						if(!chkUK(forwardAnalyzed)) {
-							posList.add(arrange(forwardAnalyzed));
+							posTagList.addAll(arrange(forwardAnalyzed));
 						} else {
 							// 둘다 UK 있으면, backward 값으로
-							posList.add(arrange(backAnalyzed));
+							posTagList.addAll(arrange(backAnalyzed));
 						}
 					} else {
 						// 둘다 UK 있으면, backward 값으로
-						posList.add(arrange(backAnalyzed));
-					}		
+						posTagList.addAll(arrange(backAnalyzed));
+					}
+					
+					allPosTagList.add(posTagList);
 				}
 			}
+			
+			vo.setWordList(wordList);
+			vo.setPosTagList(allPosTagList);
 			
 			//morphemeList.addAll(wordAnalyze(word[i]));
 			// 한칸씩 띄어져 있는 단어들을 분석하여 복합명사일 경우 합친다
 			//morphemeMap.addAll(sentenceAnalyze(sentenceMorphMap));
+			
+			posResult.add(vo);
 		}
 		
 		//System.out.println(document + "->" + posList);		
-		return posList;
+		return posResult;
 	}
 	
 	
@@ -128,13 +157,12 @@ public class PosTagger {
 	 * @param list
 	 * @return
 	 */
-	public Map<String, String> arrange(Map<String,  Set<String>> morphemeMap) {
-		Map<String, String> reArrangeMap = new LinkedHashMap<> ();
+	public List<Map<String, String>> arrange(Map<String,  Set<String>> morphemeMap) {
+		List<Map<String, String>> rtnList = new ArrayList<> ();
 		Map<String, String> tempMap = new LinkedHashMap<> ();
 		String lastTag = "";
 		
 		int loop = 0;
-		//System.out.println(morphemeMap);
 		for(String token : morphemeMap.keySet()) {
 			loop++;
 			Set<String> tagSet = morphemeMap.get(token);
@@ -162,7 +190,8 @@ public class PosTagger {
 		String beforeToken = "";
 		String beforeTag = "";
 		for(String token : tempMap.keySet()) {
-			//System.out.println(token + " " + tempMap.get(token));
+			Map<String, String> reArrangeMap = new LinkedHashMap<> ();
+			
 			if(tempMap.get(token).equals("NN") || tempMap.get(token).equals("CN")) {
 				// 이전 명사와 현재 명사를 합쳤을 때 품사가 있을 경우
 				if(beforeToken.length() > 0 && tagDictionary.containsKey(beforeToken + token)) {
@@ -189,10 +218,19 @@ public class PosTagger {
 				beforeToken = "";
 				beforeTag = "";
 			}
+			
+			if(reArrangeMap.size() > 0) rtnList.add(reArrangeMap);
+			reArrangeMap = new LinkedHashMap<> ();
 		}
 		
-		if(beforeToken.length() > 0) reArrangeMap.put(beforeToken, beforeTag);		
-		return reArrangeMap;
+		if(beforeToken.length() > 0) {
+			Map<String, String> reArrangeMap = new LinkedHashMap<> ();
+			reArrangeMap.put(beforeToken, beforeTag);
+			
+			rtnList.add(reArrangeMap);
+		}
+		
+		return rtnList;
 	}
 	
 	
@@ -256,6 +294,8 @@ public class PosTagger {
 		List<Map<String, Object>> tempPosList = new ArrayList<> ();
 		String word = changeTerm(_word);
 		
+		//System.out.println(_word + "->" + word);
+		
 		// 형태소가 분석되었다면...
 		if(morphemeDic.containsKey(word)) {
 			//System.out.println("morpheme->" + morphemeDic.get(word));
@@ -269,7 +309,7 @@ public class PosTagger {
 		
 		// 다른 사전에 있다면
 		if(tagDictionary.containsKey(word)) {
-			morphemeMap.put(word, tagDictionary.get(word));
+			morphemeMap.put(word, tagDictionary.get(word));			
 			return morphemeMap;
 		}
 		
@@ -277,7 +317,6 @@ public class PosTagger {
 		int last = word.length();
 		String lastToken = "";
 		
-		// 테스트공고를 위해 입사지원합니다.
 		for(int i = 0; i < word.length(); i++) {
 			String token = word.substring(last - (i+1), last);
 			String chgToken = changeTerm(token);
@@ -483,6 +522,8 @@ public class PosTagger {
 	 * @return
 	 */
 	public String changeTerm(String term) {
+		/*if(tagDictionary.containsKey(term)) return term;
+		if(morphemeDic.containsKey(term)) return term;*/
 		if(synDictionary.containsKey(term)) return synDictionary.get(term);
 		if(nerSynDictionary.containsKey(term)) return nerSynDictionary.get(term);
 		

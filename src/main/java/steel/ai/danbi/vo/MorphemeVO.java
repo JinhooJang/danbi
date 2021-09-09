@@ -1,48 +1,47 @@
 package steel.ai.danbi.vo;
 
-import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 
 /**
  * 형태소 Value Object
  * 
  * @author jinhoo.jang
- * @since 2018.06.04
+ * @since 2021.09.09
  */
 public class MorphemeVO {
 
-	/** 단어 */
-	private String word;
-	/** 형태소 */
-	private ArrayList<String> token;
-	/** 태그 */
-	private ArrayList<String> tag;
-	/** NER */
-	private HashMap<String, ArrayList<String>> ner;
+	/** 원본 단어 리스트 */
+	private List<String> wordList;
 	
-	public String getWord() {
-		return word;
+	/** pos, ner tagging */
+	private List<List<Map<String, String>>> posTagList;
+	
+	/** tag string list */
+	private List<List<String>> tagStrList;
+
+	public List<String> getWordList() {
+		return wordList;
 	}
-	public void setWord(String word) {
-		this.word = word;
+
+	public void setWordList(List<String> wordList) {
+		this.wordList = wordList;
 	}
-	public ArrayList<String> getToken() {
-		return token;
+
+	public List<List<Map<String, String>>> getPosTagList() {
+		return posTagList;
 	}
-	public void setToken(ArrayList<String> token) {
-		this.token = token;
+
+	public void setPosTagList(List<List<Map<String, String>>> posTagList) {
+		this.posTagList = posTagList;
 	}
-	public ArrayList<String> getTag() {
-		return tag;
+
+	public List<List<String>> getTagStrList() {
+		return tagStrList;
 	}
-	public void setTag(ArrayList<String> tag) {
-		this.tag = tag;
-	}
-	public HashMap<String, ArrayList<String>> getNer() {
-		return ner;
-	}
-	public void setNer(HashMap<String, ArrayList<String>> ner) {
-		this.ner = ner;
+
+	public void setTagStrList(List<List<String>> tagStrList) {
+		this.tagStrList = tagStrList;
 	}
 }

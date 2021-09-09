@@ -8,8 +8,6 @@ import java.util.Map;
 import java.util.Set;
 
 import steel.ai.danbi.module.Dictionary;
-import steel.ai.danbi.module.Konlp;
-import steel.ai.danbi.module.KonlpNew;
 import steel.ai.danbi.module.PosTagger;
 import steel.ai.danbi.vo.DanbiConfigVO;
 import steel.ai.danbi.vo.MorphemeVO;
@@ -27,7 +25,6 @@ public class Danbi {
 	
 	protected String NEWLINE = System.getProperty("line.separator");
 	
-	private KonlpNew ANALYZE;
 	private DanbiConfigVO CONFIG;
 	
 	// 기분석된 형태소 사전
@@ -99,37 +96,37 @@ public class Danbi {
 			
 			// 한단어로 끝나는 사전 처리
 			// 단어의 마지막에 붙는 태그 처리
-			dictionary.setDictionary(CONFIG.getDicPath() + "em.dic", tagDictionary, synDictionary, "EM");	// 어미
-			dictionary.setDictionary(CONFIG.getDicPath() + "js.dic", tagDictionary, synDictionary, "JS");	// 조사
-			dictionary.setDictionary(CONFIG.getDicPath() + "nb.dic", tagDictionary, synDictionary, "NB");	// 의존
-			dictionary.setDictionary(CONFIG.getDicPath() + "sf.dic", tagDictionary, synDictionary, "SF");	// 기호
+			dictionary.setDictionary(CONFIG.getDicPath() + "em.dic", tagDictionary, synDictionary, "EM", true);	// 어미
+			dictionary.setDictionary(CONFIG.getDicPath() + "js.dic", tagDictionary, synDictionary, "JS", true);	// 조사
+			dictionary.setDictionary(CONFIG.getDicPath() + "nb.dic", tagDictionary, synDictionary, "NB", true);	// 의존
+			dictionary.setDictionary(CONFIG.getDicPath() + "sf.dic", tagDictionary, synDictionary, "SF", true);	// 기호
 			
 			// 숫자를 처리하기 위한 처리
-			dictionary.setDictionary(CONFIG.getDicPath() + "sn.dic", tagDictionary, synDictionary, "SN");
+			dictionary.setDictionary(CONFIG.getDicPath() + "sn.dic", tagDictionary, synDictionary, "SN", true);
 			
-			dictionary.setDictionary(CONFIG.getDicPath() + "mm.dic", tagDictionary, synDictionary, "MM");	// 관형사
-			dictionary.setDictionary(CONFIG.getDicPath() + "ic.dic", tagDictionary, synDictionary, "IC");	// 감탄사
-			dictionary.setDictionary(CONFIG.getDicPath() + "ma.dic", tagDictionary, synDictionary, "MA");	// 부사
-			dictionary.setDictionary(CONFIG.getDicPath() + "va.dic", tagDictionary, synDictionary, "VA");	// 형용사
-			dictionary.setDictionary(CONFIG.getDicPath() + "vv.dic", tagDictionary, synDictionary, "VV");	// 동사
+			dictionary.setDictionary(CONFIG.getDicPath() + "mm.dic", tagDictionary, synDictionary, "MM", true);	// 관형사
+			dictionary.setDictionary(CONFIG.getDicPath() + "ic.dic", tagDictionary, synDictionary, "IC", true);	// 감탄사
+			dictionary.setDictionary(CONFIG.getDicPath() + "ma.dic", tagDictionary, synDictionary, "MA", true);	// 부사
+			dictionary.setDictionary(CONFIG.getDicPath() + "va.dic", tagDictionary, synDictionary, "VA", true);	// 형용사
+			dictionary.setDictionary(CONFIG.getDicPath() + "vv.dic", tagDictionary, synDictionary, "VV", true);	// 동사
 			//dictionary.setDictionary(CONFIG.getDicPath() + "vp.dic", tagNewDictionary, synDictionary, tagDictionary, "VP");	// 긍정지정사
 			//dictionary.setDictionary(CONFIG.getDicPath() + "vn.dic", tagNewDictionary, synDictionary, tagDictionary, "VN");	// 부정지정사
 			
 			
 			
 			// 아직 태깅이 안된 사전
-			dictionary.setDictionary(CONFIG.getDicPath() + "uu.dic", tagDictionary, synDictionary, "UU");	// 미분류
-			dictionary.setDictionary(CONFIG.getDicPath() + "np.dic", tagDictionary, synDictionary, "NP");	// 대명사
-			dictionary.setDictionary(CONFIG.getDicPath() + "nn.dic", tagDictionary, synDictionary, "NN");	// 명사
+			dictionary.setDictionary(CONFIG.getDicPath() + "uu.dic", tagDictionary, synDictionary, "UU", true);	// 미분류
+			dictionary.setDictionary(CONFIG.getDicPath() + "np.dic", tagDictionary, synDictionary, "NP", true);	// 대명사
+			dictionary.setDictionary(CONFIG.getDicPath() + "nn.dic", tagDictionary, synDictionary, "NN", true);	// 명사
 			
 			for(String ner : CONFIG.getNerList()) {
 				dictionary.setNerDictionary(CONFIG.getDicPath() + "ner/" + ner + ".dic", tagDictionary, nerDictionary, nerSynDictionary, ner);
 			}			
-			dictionary.setDictionary(CONFIG.getDicPath() + "cn.dic", tagDictionary, synDictionary, "CN");	// 복합명사
+			dictionary.setDictionary(CONFIG.getDicPath() + "cn.dic", tagDictionary, synDictionary, "CN", true);	// 복합명사
 			
 			// 유저 사전을 사용할지 여부
 			if(CONFIG.isUserYn())
-				dictionary.setDictionary(CONFIG.getDicPath() + "user.dic", tagDictionary, synDictionary, "USER");	// 유저사전
+				dictionary.setDictionary(CONFIG.getDicPath() + "user.dic", tagDictionary, synDictionary, "USER", true);	// 유저사전
 			
 			dictionary.setLastTagDictionary(CONFIG.getDicPath() + "sn.dic", snDictionary, "SN");
 			//dictionary.setLastTagDictionary(DICPATH + "suf.dic", lastTagDictionary, "SF");	// 접미			
@@ -289,9 +286,10 @@ public class Danbi {
 	 * 형태소 분석 결과를 pos tagging 한 것을 list map 형태로 보여준다
 	 * @return
 	 */
-	public List<Map<String, String>> pos(String document) {
-		if(CONFIG.getCoumpoundLevel() == 0) return posTagger.posTagging(document);
-		else return arrangeList(posTagger.posTagging(document));
+	public List<MorphemeVO> pos(String document) {
+		/*if(CONFIG.getCoumpoundLevel() == 0) return posTagger.posTagging(document);
+		else return arrangeList(posTagger.posTagging(document));*/
+		return posTagger.posTagging(document);
 	}
 	
 	
@@ -339,9 +337,10 @@ public class Danbi {
 						tag += ",NER-" + ner;
 					}
 				}
-				posMap.put(k, tag);
+				posMap.put(k, tag);			
 			}
 			
+			//rtnList.add(posMap);
 			rtnList.add(posMap);
 		}
 		

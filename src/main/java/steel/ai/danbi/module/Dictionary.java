@@ -73,7 +73,8 @@ public class Dictionary {
 	public void setDictionary(String fullPath, 
 								Map<String, Set<String>> tagDic, 
 								Map<String, String> synDictionary, 
-								String tag) {
+								String tag,
+								boolean useSyn) {
 		
 		try {
 			File file = new File(fullPath);
@@ -86,24 +87,44 @@ public class Dictionary {
 					String[] value = line.toLowerCase().split(",");
 					
 					// 동의어 존재시
-					if(value.length > 1) {
-						for(int i = 0; i < value.length-1; i++) {
-							/*
-							 * if(synDictionary.containsKey(value[i+1])) { System.out.println(value[i+1] +
-							 * " duplicated. -> " + synDictionary.get(value[i+1])); } else {
-							 * synDictionary.put(value[i+1], value[0]); }
-							 */
-							synDictionary.put(value[i+1], value[0]);
+					if(useSyn) {
+						if(value.length > 1) {
+							for(int i = 0; i < value.length-1; i++) {
+								/*
+								 * if(synDictionary.containsKey(value[i+1])) { System.out.println(value[i+1] +
+								 * " duplicated. -> " + synDictionary.get(value[i+1])); } else {
+								 * synDictionary.put(value[i+1], value[0]); }
+								 */
+								synDictionary.put(value[i+1], value[0]);
+							}
+						} 
+						
+						// 태그는 기본적으로 대표값만 세팅한다 (동의어 세팅 안함)
+						Set<String> tagSet = new HashSet<> ();
+						if(tagDic.containsKey(value[0])) {
+							tagSet.addAll(tagDic.get(value[0]));
 						}
-					} 
-					
-					// 태그는 기본적으로 대표값만 세팅한다 (동의어 세팅 안함)
-					Set<String> tagSet = new HashSet<> ();
-					if(tagDic.containsKey(value[0])) {
-						tagSet.addAll(tagDic.get(value[0]));
+						tagSet.add(tag);
+						tagDic.put(value[0], tagSet);
+					} else {
+						Set<String> tagSet = new HashSet<> ();
+						
+						if(value.length > 1) {
+							for(int i = 0; i < value.length-1; i++) {
+								if(tagDic.containsKey(value[0])) {
+									tagSet.addAll(tagDic.get(value[0]));
+								}
+								tagSet.add(tag);
+								tagDic.put(value[0], tagSet);
+							}
+						} else {
+							if(tagDic.containsKey(line.toLowerCase().trim())) {
+								tagSet.addAll(tagDic.get(line.toLowerCase().trim()));
+							}
+							tagSet.add(tag);
+							tagDic.put(line.toLowerCase().trim(), tagSet);
+						}
 					}
-					tagSet.add(tag);
-					tagDic.put(value[0], tagSet);
 				}
 			}
 			
