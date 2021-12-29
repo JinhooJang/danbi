@@ -27,18 +27,13 @@ public class Danbi {
 	
 	private DanbiConfigVO CONFIG;
 	
-	// 기분석된 형태소 사전
-	protected Map<String, String> morphemeDic;
-	// 개체명 사전
-	protected Map<String, Set<String>> nerDictionary;
-	// 개체명 동의어 사전
-	protected Map<String, String> nerSynDictionary;
-	// 태그 통합
-	protected Map<String, Set<String>> tagDictionary;
-	// 대표어 사전
-	protected Map<String, String> synDictionary;
-	// 숫자를 위한 사전
-	protected Map<String, String> snDictionary;
+	protected Map<String, String> morphemeDic;			// 기분석된 형태소 사전
+	protected Map<String, Set<String>> nerDictionary;	// 개체명 사전
+	protected Map<String, String> nerSynDictionary;		// 개체명 동의어 사전
+	protected Map<String, String> vvSynDictionary;		// 동사 동의어 사전
+	protected Map<String, Set<String>> tagDictionary;	// 태그 통합
+	protected Map<String, String> synDictionary;		// 대표어 사전
+	protected Map<String, String> snDictionary;			// 숫자를 위한 사전
 	
 	// 종성 ㄱㄲㄳㄴㄵㄶㄷㄹㄺ ㄻ ㄼ ㄽ ㄾ ㄿ ㅀ ㅁ ㅂ ㅄ ㅅ ㅆ ㅇ ㅈ ㅊ ㅋ ㅌ ㅍ ㅎ
     private static final char[] JON = 
@@ -61,22 +56,16 @@ public class Danbi {
 		this.CONFIG = CONFIG;
 		this.reloadDictionary();
 		
-		/**ANALYZE = new KonlpNew(
-				morphemeDic, 
-				tagDictionary,
-				nerDictionary, 
-				nerSynDictionary, 
-				synDictionary
-		);*/
-		
 		posTagger = new PosTagger(
 				CONFIG,
 				morphemeDic, 
 				tagDictionary,
 				nerDictionary, 
+				vvSynDictionary,
 				nerSynDictionary, 
 				synDictionary,
-				snDictionary);
+				snDictionary
+		);
 	}
 	
 	
@@ -91,12 +80,14 @@ public class Danbi {
 			nerSynDictionary = new HashMap<> ();
 			snDictionary = new HashMap<> ();
 			synDictionary = new HashMap<> ();
+			vvSynDictionary = new HashMap<> ();
 			
 			morphemeDic = dictionary.setMorpheme(CONFIG.getDicPath() + "morpheme.dic");	// 기분석된 형태소 분석기
 			
 			// 한단어로 끝나는 사전 처리
 			// 단어의 마지막에 붙는 태그 처리
 			dictionary.setDictionary(CONFIG.getDicPath() + "em.dic", tagDictionary, synDictionary, "EM", true);	// 어미
+			dictionary.setDictionary(CONFIG.getDicPath() + "xsn.dic", tagDictionary, synDictionary, "XSN", true);	// 접미사
 			dictionary.setDictionary(CONFIG.getDicPath() + "js.dic", tagDictionary, synDictionary, "JS", true);	// 조사
 			dictionary.setDictionary(CONFIG.getDicPath() + "nb.dic", tagDictionary, synDictionary, "NB", true);	// 의존
 			dictionary.setDictionary(CONFIG.getDicPath() + "sf.dic", tagDictionary, synDictionary, "SF", true);	// 기호
@@ -108,11 +99,9 @@ public class Danbi {
 			dictionary.setDictionary(CONFIG.getDicPath() + "ic.dic", tagDictionary, synDictionary, "IC", true);	// 감탄사
 			dictionary.setDictionary(CONFIG.getDicPath() + "ma.dic", tagDictionary, synDictionary, "MA", true);	// 부사
 			dictionary.setDictionary(CONFIG.getDicPath() + "va.dic", tagDictionary, synDictionary, "VA", true);	// 형용사
-			dictionary.setDictionary(CONFIG.getDicPath() + "vv.dic", tagDictionary, synDictionary, "VV", true);	// 동사
+			dictionary.setDictionary(CONFIG.getDicPath() + "vv.dic", tagDictionary, vvSynDictionary, "VV", true);	// 동사
 			//dictionary.setDictionary(CONFIG.getDicPath() + "vp.dic", tagNewDictionary, synDictionary, tagDictionary, "VP");	// 긍정지정사
 			//dictionary.setDictionary(CONFIG.getDicPath() + "vn.dic", tagNewDictionary, synDictionary, tagDictionary, "VN");	// 부정지정사
-			
-			
 			
 			// 아직 태깅이 안된 사전
 			dictionary.setDictionary(CONFIG.getDicPath() + "uu.dic", tagDictionary, synDictionary, "UU", true);	// 미분류
@@ -144,152 +133,13 @@ public class Danbi {
 	
 	
 	/**
-	 * 형태소 분석
-	 */
-	/* public List<HashMap<String, MorphemeVO>> morphemeAnalyze(String document) {
-		if(document == null || document.trim().length() == 0) return null;
-		
-		//LOGGER.debug("document : " + document);
-		List<HashMap<String, MorphemeVO>> morphemeMap = new ArrayList<HashMap<String, MorphemeVO>> ();
-		List<HashMap<String, MorphemeVO>> sentenceMorphMap = null;
-		
-		// 구분자 특수문자는 공백으로 변경
-		document = document.replaceAll(",", " ")
-				.replaceAll("/", " ")
-				.replaceAll("\\|", " ")
-				.replaceAll("·", " ");				
-		
-		
-		// 개행은 마침표로 변경
-		document = document.trim()
-				.replaceAll("\n", ".")
-				.replaceAll("\r", ".");
-		
-		String[] sentences = document.split("\\.");
-		
-		//System.out.println(sentences.length + " sentences.");
-		String sentence = "";
-		
-		// 문장별로 형태소 분석 수행
-		for(int i = 0; i < sentences.length; i++) {
-			sentence = sentences[i].toLowerCase().trim();
-			if(sentence.length() == 0) continue;
-			sentenceMorphMap = new ArrayList<HashMap<String, MorphemeVO>> ();
-			
-			// 문장을 다시, 단어로 자른다
-			String[] word = sentence.trim().split(" ");
-			for(int j = 0; j < word.length; j++) {
-				//System.out.println(word[j].trim());
-				if(word[j].trim().length() > 0 && word[j].trim().length() < 15) {				
-					HashMap<String, MorphemeVO> map = new HashMap<String, MorphemeVO> ();
-					MorphemeVO morphVO = new MorphemeVO ();
-					morphVO.setWord(word[j]);
-					ANALYZE.wordAnalyze(word[j], morphVO, false);
-					
-					// 2019.10.25 UK가 있을 경우, 모두 UK로 변환
-					if(morphVO.getTag().contains("UK")) {
-						morphVO = ANALYZE.setUKMorph(word[j]);
-					}
-					
-					map.put(word[j], morphVO);
-					sentenceMorphMap.add(map);
-				}
-			}
-			//morphemeList.addAll(wordAnalyze(word[i]));
-			
-			// 한칸씩 띄어져 있는 단어들을 분석하여 복합명사일 경우 합친다
-			morphemeMap.addAll(sentenceAnalyze(sentenceMorphMap));
-		}
-		
-		return morphemeMap;
-	} */
-	
-	
-	/**
-	 * 문장의 의미를 분석하여, 형태소를 재조립한다
-	 * 
-	 * @param sentenceMorphMap
-	 * @return
-	 */
-	/* public List<HashMap<String, MorphemeVO>> 
-				sentenceAnalyze(List<HashMap<String, MorphemeVO>> sentenceMorphMap) {
-		
-		List<HashMap<String, MorphemeVO>> rtnList = new ArrayList<HashMap<String, MorphemeVO>>();
-		
-		// 1차. 복합명사로 변경. 2018.06.26
-		MorphemeVO beforeMorphVO = null;
-		HashMap<String, MorphemeVO> tempMap = null;
-		
-		for(HashMap<String, MorphemeVO> wordMap : sentenceMorphMap) {
-			for(String word : wordMap.keySet()) {
-				MorphemeVO morphVO = wordMap.get(word);
-				
-				// 바로 전 단어가, 명사로 끝날 경우
-				if(beforeMorphVO != null && beforeMorphVO.getWord().length() > 0 &&
-						(beforeMorphVO.getTag().get(beforeMorphVO.getTag().size()-1).equals("NN") 
-						|| beforeMorphVO.getTag().get(beforeMorphVO.getTag().size()-1).equals("CN"))) {
-					
-					// 첫번째 단어가 명사나 복합명사일 경우 합쳐본다
-					if(morphVO.getTag().get(0).equals("NN") 
-							|| morphVO.getTag().get(0).equals("CN")){
-						
-						// 합쳐졌을 때, 명사사전에 있는 경우...
-						if(nnDictionary.containsKey(beforeMorphVO.getWord() + morphVO.getToken().get(0))) {
-							
-							// word map을 합친다
-							beforeMorphVO.setWord(beforeMorphVO.getWord() + morphVO.getWord());
-							ArrayList<String> tokenList = beforeMorphVO.getToken();
-							ArrayList<String> tagList = beforeMorphVO.getTag();
-							
-							String token = tokenList.get(tokenList.size()-1) + morphVO.getToken().get(0);
-							
-							tokenList.set(tokenList.size()-1, token);
-							tagList.set(tokenList.size()-1, "CN");
-							
-							for(int i = 0; i < morphVO.getToken().size(); i++) {
-								if(i > 0) {
-									tokenList.add(morphVO.getToken().get(i));
-									tagList.add(morphVO.getTag().get(i));
-								}
-							}
-							
-							beforeMorphVO.setToken(tokenList);
-							beforeMorphVO.setTag(tagList);
-							
-							continue;
-						}						
-					}
-				}	
-				// before를 세팅
-				if(beforeMorphVO != null) {
-					tempMap = new HashMap<String, MorphemeVO> ();
-					tempMap.put(beforeMorphVO.getWord(), beforeMorphVO);
-					rtnList.add(tempMap);
-				}
-				
-				beforeMorphVO = wordMap.get(word);
-			}
-		}
-		
-		// 한문장이 끝날 경우
-		if(beforeMorphVO != null) {
-			tempMap = new HashMap<String, MorphemeVO> ();
-			tempMap.put(beforeMorphVO.getWord(), beforeMorphVO);
-			rtnList.add(tempMap);
-		}
-		
-		return rtnList;
-	} */
-	
-	
-	/**
 	 * 형태소 분석 결과를 pos tagging 한 것을 list map 형태로 보여준다
 	 * @return
 	 */
 	public List<MorphemeVO> pos(String document) {
-		/*if(CONFIG.getCoumpoundLevel() == 0) return posTagger.posTagging(document);
-		else return arrangeList(posTagger.posTagging(document));*/
-		return posTagger.posTagging(document);
+		if(CONFIG.getCoumpoundLevel() == 0) return posTagger.posTagging(document);
+		else return arrangeList(posTagger.posTagging(document));
+		//return posTagger.posTagging(document);
 	}
 	
 	
@@ -298,53 +148,78 @@ public class Danbi {
 	 * 
 	 * @return
 	 */
-	public List<Map<String, String>> arrangeList(List<Map<String, String>> posList) {
-		List<Map<String, String>> rtnList = new ArrayList<> ();
+	public List<MorphemeVO> arrangeList(List<MorphemeVO> posList) {
+		List<MorphemeVO> rtnList = new ArrayList<> ();
 		
-		String prevKwd = "";
-		String prevTag = "";
 		for(int i = 0; i < posList.size(); i++) {
-			Map<String, String> posMap = posList.get(i);
+			MorphemeVO posVO = posList.get(i);
+			List<List<Map<String, String>>> posTagList = posVO.getPosTagList();
+			List<List<String>> allTagStrList = new ArrayList<> ();
 			
-			// 
-			for(String k : posMap.keySet()) {
-				String tag = posMap.get(k);
+			for(int j = 0; j < posVO.getWordList().size(); j++) {
+				String word = posVO.getWordList().get(j);
+				List<Map<String, String>> posTagListByWord = posTagList.get(j);
 				
-				/*// 이전값과 현재값이 모두 명사일 때
-				if(prevTag.equals("NN") && tag.equals("NN")) {
-					Map<String, String> newMap = new LinkedHashMap<> ();
-					
-					// 합친 명사가 사전에 있을 경우
-					if(tagDictionary.containsKey(prevKwd + k)) {						
-						Set<String> tagSet = tagDictionary.get(prevKwd + k);
-						
-						// 복합명사 우선
-						if(tagSet.contains("CN")) newMap.put(prevKwd + k, "CN");
-						else if(tagSet.contains("NN")) newMap.put(prevKwd + k, "CN");
+				//System.out.println("[ " + posTagListByWord + " ]");
+				
+				// 명사가 연속으로 있을 경우, 그리고 명사를 사전으로 찾았을 때 복합명사가 있을 경우 복합명사로 변경
+				for(Map<String, String> tagMap : posTagListByWord) {
+					// 우선 연속적인 명사가 있고, NER 사전에 없을 경우 복합명사 처리
+					boolean isNer = false;
+					boolean isAllNN = true;
+					StringBuffer words = new StringBuffer();
+					for(String tagWord : tagMap.keySet()) {
+						if(!tagMap.get(tagWord).equals("NN") && !tagMap.get(tagWord).equals("CN")) {
+							isNer = false;
+							isAllNN = false;
+							break;
+						}
+						String chgNerKwd = chgNerKwd(word);
+						if(nerDictionary.containsKey(chgNerKwd)) isNer = true;
+						words.append(tagWord);
 					}
 					
-					String chgNerKwd = chgNerKwd(prevKwd + k);
-					if(nerDictionary.containsKey(chgNerKwd)) {
-						Set<String> nerSet = nerDictionary.get(prevKwd + k);
+					// 명사가 있고, NER이 없으며, 복합명사 사전에 있을 경우 치환
+					if(!isNer && isAllNN && posTagListByWord.size() > 1 
+							&& tagDictionary.containsKey(words.toString())
+							&& tagDictionary.get(words.toString()).contains("CN")) {
 						
+						List<String> tagStrList = new ArrayList<> ();
+						tagStrList.add(word + "=" + "CN");
+						allTagStrList.add(tagStrList);
+						break;
+					} else {
+						for(String tagWord : tagMap.keySet()) {
+							word = tagWord;				
+						
+							List<String> tagStrList = new ArrayList<> ();
+							StringBuffer posStr = new StringBuffer();
+							String tagStr = tagMap.get(word);
+							
+							//System.out.println("tagStr==>" + tagStr);
+							
+							// tag에서 NER을 가져온다
+							String chgNerKwd = chgNerKwd(word);
+							if(nerDictionary.containsKey(chgNerKwd)) {
+								Set<String> nerSet = nerDictionary.get(chgNerKwd);
+								for(String ner : nerSet) {
+									if(posStr.length() > 0) posStr.append(",");
+									posStr.append("NER-" + ner);				
+								}
+								
+								tagMap.put(word, tagStr + "," + posStr.toString());	
+							}
+							
+							tagStrList.add(word + "=" + tagMap.get(word));
+							allTagStrList.add(tagStrList);
+						}
 					}
-				}*/
-				// tag에서 NER을 가져온다
-				String chgNerKwd = chgNerKwd(k);
-				if(nerDictionary.containsKey(chgNerKwd)) {
-					Set<String> nerSet = nerDictionary.get(chgNerKwd);
-					for(String ner : nerSet) {
-						tag += ",NER-" + ner;
-					}
-				}
-				posMap.put(k, tag);			
+				}				
 			}
 			
-			//rtnList.add(posMap);
-			rtnList.add(posMap);
+			posVO.setTagStrList(allTagStrList);			
+			rtnList.add(posVO);
 		}
-		
-		//System.out.println(rtnList);
 		
 		return rtnList;
 	}

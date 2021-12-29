@@ -4,6 +4,7 @@ import java.io.BufferedReader;
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,7 +27,7 @@ public class DanbiMain {
 		// 사전이 위치한 경로
 		vo.setDicPath("D:/Project/database/dictionary/");
 		// 사용할 NER 리스트 
-		vo.setNerList("SCH,JOB,SKLC,SKLS,MAJ,TSK,NAT,LOC,LIC,MTR,CMP,SYN".split(","));
+		vo.setNerList("SCH,JOB,SKLC,SKLS,MAJ,TSK,NAT,LOC,LIC,MTR,CMP,SYN,BRD".split(","));
 		// 사용자 사전을 사용할 것인지
 		vo.setUserYn(true);
 		// debug 모드 사용 여부
@@ -34,7 +35,7 @@ public class DanbiMain {
 		vo.setRepresentative(false);
 		vo.setCoumpoundLevel(1);
 		// compound level 0(무리해서 추출 안함), 1(복합명사가 있을 경우 명사 연결 치환), 2(복합명사와 명사 둘다 뽑는다)
-		String text = "우아하게 보여요";
+		/*String text = "우아하게 보여요";
 		Map<String, String> testMap = new HashMap<> ();
 		
 		try {
@@ -50,25 +51,30 @@ public class DanbiMain {
 		} catch (Exception e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
-		}		
+		}	*/
 		
-		/*try {
+		try {
 			Danbi danbi = new Danbi(vo);
 			// jarvis 데이터 가져오기
 			List<String> sentences = getTestData();
+			//Collections.shuffle(sentences);
 			System.out.println("sentences->" + sentences.size());
 			Thread.sleep(5000);
 			List<Map<String, String>> tagAll = new ArrayList<> ();
 			int loop = 0;
 			long startTime = System.currentTimeMillis();
 			for(String sentence : sentences) {
-				List<Map<String, String>> tempList = danbi.pos(sentence);
-				System.out.println(sentence);
-				System.out.println(tempList);
-				tagAll.addAll(tempList);
+				List<MorphemeVO> danbiResult = danbi.pos(sentence);
+				for(MorphemeVO morphVO : danbiResult) {
+					/*for(int i = 0; i < morphVO.getWordList().size(); i++) {
+						//System.out.println(morphVO.getWordList().get(i) + "->" + morphVO.getPosTagList().get(i));						
+					}*/
+					System.out.println(sentence + "->" + morphVO.getTagStrList());
+					//System.out.println(sentence + "->" + morphVO.getPosTagList());
+				}
 				
 				//danbi.pos(sentence);
-				if(++loop % 10000 == 0) System.out.println("execute sentence => " + loop);		
+				if(++loop % 100 == 0) System.out.println("execute sentence => " + loop);
 				Thread.sleep(5000);
 			}
 			long endTime = System.currentTimeMillis();
@@ -80,7 +86,7 @@ public class DanbiMain {
 			//System.out.println(danbi.pos(text));
 		} catch (Exception e) {
 			e.printStackTrace();
-		}*/
+		}
 	}
 	
 	public static void main( String[] args ) {
@@ -118,16 +124,19 @@ public class DanbiMain {
 		try {
 			BufferedReader inFiles
 				//= new BufferedReader(new InputStreamReader(new FileInputStream("c:/project/steel/database/raw-data/saibog/jarvis.txt"), "UTF8"));
-			= new BufferedReader(new InputStreamReader(new FileInputStream("D:/project/database/recruits_title.csv"), "UTF8"));
+				//= new BufferedReader(new InputStreamReader(new FileInputStream("D:/project/database/recruits_title.csv"), "UTF8"));
+				//= new BufferedReader(new InputStreamReader(new FileInputStream("D:/project/database/jumpit_title.txt"), "UTF8"));
+				= new BufferedReader(new InputStreamReader(new FileInputStream("D:/project/database/morph_test.txt"), "UTF8"));
 			
 			int count = 0;
 			while((line = inFiles.readLine()) != null) {
-				if(line.trim().length() > 0 && count++ > 0) {
+				/*if(line.trim().length() > 0 && count++ > 0) {
 					String[] temp = line.split(",");
 					if(temp != null && temp.length == 2) {
 						sentences.add(temp[1]);
 					}
-				}
+				}*/
+				if(line.trim().length() > 0) sentences.add(line.trim());
 			}
 			
 			inFiles.close();

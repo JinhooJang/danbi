@@ -30,6 +30,7 @@ public class PosTagger {
 	protected Map<String, String> nerSynDictionary;
 	protected Map<String, Set<String>> tagDictionary;
 	protected Map<String, String> synDictionary;
+	protected Map<String, String> vvSynDictionary;
 	protected Map<String, String> snDictionary;
 	
 	UKLogger ukLogger = new UKLogger();
@@ -38,6 +39,7 @@ public class PosTagger {
 			Map<String, String> morphemeDic,
 			Map<String, Set<String>> tagDictionary,
 			Map<String, Set<String>> nerDictionary,
+			Map<String, String> vvSynDictionary,
 			Map<String, String> nerSynDictionary,			
 			Map<String, String> synDictionary,
 			Map<String, String> snDictionary) {
@@ -46,6 +48,7 @@ public class PosTagger {
 		this.morphemeDic = morphemeDic;
 		this.tagDictionary = tagDictionary;
 		this.nerDictionary = nerDictionary;
+		this.vvSynDictionary = vvSynDictionary;
 		this.nerSynDictionary = nerSynDictionary;		
 		this.synDictionary = synDictionary;
 		this.snDictionary = snDictionary;
@@ -66,7 +69,7 @@ public class PosTagger {
 		// 구분자 특수문자는 공백으로 변경
 		//document = document.replaceAll("[\\|\\[\\]\\(\\)\\<\\>\\\"-_·:~,㈜🙂?]", " ");
 		//document = document.replaceAll("[\\|\\[\\]\\(\\)\\<\\>_\\-/㈜,·:~]", " ");
-		document = document.replaceAll("[\\|\\[\\]\\(\\)\\<\\>_\\㈜,·:~]", " ");
+		document = document.replaceAll("[\\|\\[\\]\\(\\)\\<\\>_\\㈜,·:]", " ");
 		if(CONFIG.isDebug()) System.out.println("document->" + document);
 		
 		// 개행값은 개행 문자로 변경
@@ -184,8 +187,6 @@ public class PosTagger {
 			}
 		}
 		
-		//System.out.println(tempMap);
-		
 		// 복합명사
 		String beforeToken = "";
 		String beforeTag = "";
@@ -204,7 +205,7 @@ public class PosTagger {
 						continue;
 					}
 				} else if(beforeTag.equals("NN") || beforeTag.equals("CN")) {
-					reArrangeMap.put(beforeToken, beforeTag);
+					reArrangeMap.put(beforeToken, beforeTag);					
 				}
 				
 				if(tempMap.get(token).contains("CN")) beforeTag = "CN";
@@ -294,8 +295,6 @@ public class PosTagger {
 		List<Map<String, Object>> tempPosList = new ArrayList<> ();
 		String word = changeTerm(_word);
 		
-		//System.out.println(_word + "->" + word);
-		
 		// 형태소가 분석되었다면...
 		if(morphemeDic.containsKey(word)) {
 			//System.out.println("morpheme->" + morphemeDic.get(word));
@@ -312,6 +311,13 @@ public class PosTagger {
 			morphemeMap.put(word, tagDictionary.get(word));			
 			return morphemeMap;
 		}
+		
+		// 패턴처리
+		this.pattern(morphemeMap, word);
+		if(morphemeMap.size() > 0) return morphemeMap;
+		
+		// 동사+어미 처리
+		
 		
 		Set<String> prevPos = new HashSet<> ();
 		int last = word.length();
@@ -399,7 +405,7 @@ public class PosTagger {
 			}
 		}
 		
-		//System.out.println(_word + "->" + morphemeMap);
+		//System.out.println(_word + "-->" + morphemeMap);
 		return morphemeMap;
 	}
 	
@@ -526,6 +532,7 @@ public class PosTagger {
 		if(morphemeDic.containsKey(term)) return term;*/
 		if(synDictionary.containsKey(term)) return synDictionary.get(term);
 		if(nerSynDictionary.containsKey(term)) return nerSynDictionary.get(term);
+		if(vvSynDictionary.containsKey(term)) return vvSynDictionary.get(term);
 		
 		return term;
 	}	
@@ -539,5 +546,127 @@ public class PosTagger {
 		String chgToken = changeTerm(otherToken);
 		if(tagDictionary.containsKey(chgToken)) return tagDictionary.get(chgToken);
 		return null;
+	}
+	
+	
+	/**
+	 * 접미사 처리
+	 */
+	public void pattern(Map<String,  Set<String>> morphemeMap, String word) {
+		for(int i = 0; i < word.length(); i++) {
+			String subWord = word.substring(word.length()-i, word.length());
+			String preWord = word.substring(0, word.length()-i);
+			
+			// 명사 + 접미사 처리
+			this.nnSuffix(morphemeMap, preWord, subWord);
+			if(morphemeMap.size() > 0) return;
+			
+			// 동사 + 어미 처리
+			this.vvem(morphemeMap, preWord, subWord);
+			if(morphemeMap.size() > 0) return;
+			
+			// 명사 + 조사 처리
+			this.nnjs(morphemeMap, preWord, subWord);
+			if(morphemeMap.size() > 0) return;
+			
+			// 명사 + 어미 처리
+			this.nnem(morphemeMap, preWord, subWord);
+			if(morphemeMap.size() > 0) return;
+		}
+	}
+	
+	
+	/**
+	 * 명사 + 접미사 처리
+	 * 
+	 * @param morphemeMap
+	 * @param preWord
+	 * @param subWord
+	 */
+	public void nnSuffix(Map<String,  Set<String>> morphemeMap, String preWord, String subWord) {
+		// 접미사로 되어 있을 경우
+		if(tagDictionary.containsKey(subWord) 
+				&& tagDictionary.get(subWord).contains("XSN")
+				&& tagDictionary.containsKey(preWord)) {
+			
+			Set<String> tagSet = tagDictionary.get(preWord);
+			if(tagSet.contains("CN")) {
+				morphemeMap.put(preWord, new HashSet<String>(Arrays.asList("CN")));
+				morphemeMap.put(subWord, new HashSet<String>(Arrays.asList("XSN")));
+			} else if (tagSet.contains("NN")) {
+				morphemeMap.put(preWord, new HashSet<String>(Arrays.asList("NN")));
+				morphemeMap.put(subWord, new HashSet<String>(Arrays.asList("XSN")));
+			}				
+		}
+	}
+	
+	
+	/**
+	 * 동사 + 어미 처리
+	 * 
+	 * @param morphemeMap
+	 * @param preWord
+	 * @param subWord
+	 */
+	public void vvem(Map<String,  Set<String>> morphemeMap, String preWord, String subWord) {
+		// 어미로 되어 있을 경우
+		if(tagDictionary.containsKey(subWord) 
+				&& tagDictionary.get(subWord).contains("EM")
+				&& vvSynDictionary.containsKey(preWord)) {
+			
+			morphemeMap.put(preWord, new HashSet<String>(Arrays.asList("VV")));
+			morphemeMap.put(subWord, new HashSet<String>(Arrays.asList("EM")));
+		}
+	}
+	
+	
+	/**
+	 * 명사 + 어미 처리
+	 * 
+	 * @param morphemeMap
+	 * @param preWord
+	 * @param subWord
+	 */
+	public void nnem(Map<String,  Set<String>> morphemeMap, String preWord, String subWord) {
+		// 어미로 되어 있을 경우
+		if(tagDictionary.containsKey(subWord) 
+				&& tagDictionary.get(subWord).contains("EM")
+				&& tagDictionary.containsKey(preWord)) {
+			
+			Set<String> tagSet = tagDictionary.get(preWord);
+			
+			if(tagSet.contains("CN")) {
+				morphemeMap.put(preWord, new HashSet<String>(Arrays.asList("CN")));
+				morphemeMap.put(subWord, new HashSet<String>(Arrays.asList("EM")));
+			} else if (tagSet.contains("NN")) {
+				morphemeMap.put(preWord, new HashSet<String>(Arrays.asList("NN")));
+				morphemeMap.put(subWord, new HashSet<String>(Arrays.asList("EM")));
+			}	
+		}
+	}
+	
+	
+	/**
+	 * 명사 + 조사
+	 * 
+	 * @param morphemeMap
+	 * @param preWord
+	 * @param subWord
+	 */
+	public void nnjs(Map<String,  Set<String>> morphemeMap, String preWord, String subWord) {
+		// 조사로 되어 있을 경우
+		if(tagDictionary.containsKey(subWord) 
+				&& tagDictionary.get(subWord).contains("JS")
+				&& tagDictionary.containsKey(preWord)) {
+			
+			Set<String> tagSet = tagDictionary.get(preWord);
+			if(tagSet.contains("CN")) {
+				morphemeMap.put(preWord, new HashSet<String>(Arrays.asList("CN")));
+				morphemeMap.put(subWord, new HashSet<String>(Arrays.asList("JS")));
+			} else if (tagSet.contains("NN")) {
+				morphemeMap.put(preWord, new HashSet<String>(Arrays.asList("NN")));
+				morphemeMap.put(subWord, new HashSet<String>(Arrays.asList("JS")));
+			}				
+		}
 	}
 }

@@ -97,7 +97,9 @@ public class Dictionary {
 								 */
 								synDictionary.put(value[i+1], value[0]);
 							}
-						} 
+						} else {
+							synDictionary.put(value[0], value[0]);
+						}
 						
 						// 태그는 기본적으로 대표값만 세팅한다 (동의어 세팅 안함)
 						Set<String> tagSet = new HashSet<> ();
