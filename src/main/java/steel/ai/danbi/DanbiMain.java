@@ -25,7 +25,7 @@ public class DanbiMain {
 		DanbiConfigVO vo = new DanbiConfigVO ();
 		
 		// 사전이 위치한 경로
-		vo.setDicPath("D:/Project/database/dictionary/");
+		vo.setDicPath("c:/Project/steel/database/dictionary/");
 		// 사용할 NER 리스트 
 		vo.setNerList("SCH,JOB,SKLC,SKLS,MAJ,TSK,NAT,LOC,LIC,MTR,CMP,SYN,BRD".split(","));
 		// 사용자 사전을 사용할 것인지
@@ -126,7 +126,7 @@ public class DanbiMain {
 				//= new BufferedReader(new InputStreamReader(new FileInputStream("c:/project/steel/database/raw-data/saibog/jarvis.txt"), "UTF8"));
 				//= new BufferedReader(new InputStreamReader(new FileInputStream("D:/project/database/recruits_title.csv"), "UTF8"));
 				//= new BufferedReader(new InputStreamReader(new FileInputStream("D:/project/database/jumpit_title.txt"), "UTF8"));
-				= new BufferedReader(new InputStreamReader(new FileInputStream("D:/project/database/morph_test.txt"), "UTF8"));
+				= new BufferedReader(new InputStreamReader(new FileInputStream("c:/project/database/morph_test.txt"), "UTF8"));
 			
 			int count = 0;
 			while((line = inFiles.readLine()) != null) {
